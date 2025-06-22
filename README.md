@@ -161,3 +161,70 @@ def swing(X , a):
             sim += 1 / (a + (useri[0] + userj[0] == 2) + (useri[1] + userj[1] == 2))
     return sim 
 ```
+
+
+### 3.基于用户的协同过滤(UserCF)
+
+UserCF：用户协同过滤（User-based Collaborative Filtering，简称 UserCF）是一种基于用户相似性的推荐算法。它的核心思想是：如果两个用户喜欢相似的物品，那么目标用户可能也会喜欢与相似用户喜欢的其他物品。
+$$
+I = A \cap B 
+(A为用户u喜欢的集合，B为用户v喜欢的集合)
+$$
+
+$$
+\text{sim}(u, v) = \frac{|I|}{\sqrt{|A|\cdot|B|}}
+$$
+
+*举例子*
+
+|       | ItemX | ItemY | ItemZ |
+|-------|-------|-------|-------|
+| UserA | 1     | 0     | 1     |
+| UserB | 1     | 1     | 0     |
+| UserC | 0     | 1     | 0     |
+
+解释：有三位用户 A, B, C，有三个物品 X, Y, Z (1 表示喜欢，0 表示不喜欢)
+
+$$
+sin(UserA, UserB) = \frac{1}{\sqrt{2\cdot2}} = \frac{1}{2}
+$$
+
+$$
+sin(UserA, UserC) = \frac{0}{\sqrt{2\cdot1}} = 0 
+$$
+
+$$
+sin(UserB, UserC) = \frac{1}{\sqrt{2\cdot1}} = \frac{1}{\sqrt{2}}
+$$
+
+
+python程序
+
+```python
+import numpy as np
+def calc_similarity(x, y):
+    lenx = x.shape[0]
+    leny = y.shape[0]
+    I = np.sum(x == y)
+
+    if lenx == 0 or leny == 0 :
+        return 0 
+
+    return I / (lenx * leny) ** 0.5
+```
+
+为了降低热门物品的权重，需要需改分子的大小，让越多人喜欢的物品的分子值越小，平衡热门度
+
+$$
+\text sin(u,v) = \frac{\sum_{l \in I}\frac{1}{\log(1+n_l)}}{\sqrt{|A|\cdot|B|}}
+$$
+
+
+预估目标用户对于物品x的喜爱程度
+$$
+\text{like}(\text{user},\text{item}) = \sum_j \text{like}(\text{user}_j, \text{item}) \cdot \text{sim}(\text{user}_j, \text{user})
+$$
+
+
+#### Q:为什么没有归一化的操作？
+* A:因为在召回的结果中，注重的是分数的排序，而不是真实的预估值，所以基于排序只需要知道大小，而不需要归一化。但是为了标准，可自行选择归一化方式。
