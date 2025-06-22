@@ -92,9 +92,11 @@ def calc_similarity(x,y) :
 $$
 \text{like}(\text{user},\text{item}) = \sum_j \text{like}(\text{user}, \text{item}_j) \cdot \text{sim}(\text{item}_j, \text{item})
 $$
+
 返回几百条喜爱程度最大的数据，作为一个召回通道
 
 ### 2.Swing模型
+
 $$
 \text{sim}(x,y) = \sum_{u_1 \in \mathcal{V}} \sum_{u_2 \in \mathcal{V}} \frac{1}{a + \text{overlap}(u_1, u_2)} （a为非负超参数）
 $$
@@ -109,6 +111,7 @@ $$
 
 
 重叠矩阵为：
+
 $$
 \text{overlap} =
 \begin{bmatrix}
@@ -119,6 +122,7 @@ $$
 $$
 
 平滑参数设为：
+
 $$
 a = 1
 $$
@@ -166,6 +170,7 @@ def swing(X , a):
 ### 3.基于用户的协同过滤(UserCF)
 
 UserCF：用户协同过滤（User-based Collaborative Filtering，简称 UserCF）是一种基于用户相似性的推荐算法。它的核心思想是：如果两个用户喜欢相似的物品，那么目标用户可能也会喜欢与相似用户喜欢的其他物品。
+
 $$
 I = A \cap B 
 (A为用户u喜欢的集合，B为用户v喜欢的集合)
@@ -221,6 +226,7 @@ $$
 
 
 预估目标用户对于物品x的喜爱程度
+
 $$
 \text{like}(\text{user},\text{item}) = \sum_j \text{like}(\text{user}_j, \text{item}) \cdot \text{sim}(\text{user}_j, \text{user})
 $$
