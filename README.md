@@ -92,7 +92,6 @@ def calc_similarity(x,y) :
 $$
 \text{like}(\text{user},\text{item}) = \sum_j \text{like}(\text{user}, \text{item}_j) \cdot \text{sim}(\text{item}_j, \text{item})
 $$
-
 返回几百条喜爱程度最大的数据，作为一个召回通道
 
 ### 2.Swing模型
@@ -146,11 +145,13 @@ $$
 $$
 
 化简结果：
+
 $$
 \text{sim}(i_1, i_2) = \frac{1}{3} + \frac{5}{2} + 2 = \frac{1}{3} + \frac{10}{3} = \frac{11}{3}
 $$
 
 最终结果：
+
 $$
 \text{sim}(i_1, i_2) \approx 5.3333
 $$
@@ -234,3 +235,193 @@ $$
 
 #### Q:为什么没有归一化的操作？
 * A:因为在召回的结果中，注重的是分数的排序，而不是真实的预估值，所以基于排序只需要知道大小，而不需要归一化。但是为了标准，可自行选择归一化方式。
+
+
+### 4.最近邻查找系统
+给出一个大量的数据集（假设为二维数据集），给定一个目标target，找到与目标距离最近的点。给定计算点A、B距离的公式：
+
+$$
+\text{Distance} = 1 - \cos(\theta) = 1 - \frac{\mathbf{A} \cdot \mathbf{B}}{\|\mathbf{A}\| \cdot \|\mathbf{B}\|}
+$$
+
+```python
+import matplotlib.pyplot as plt 
+import pandas as pd 
+import time 
+import numpy as np 
+
+def calc_dis(x, y):
+    x = np.array(x)
+    y = np.array(y)
+    if np.linalg.norm(x) == 0 or np.linalg.norm(y) == 0:
+        return float('inf')  
+    return 1 - (np.dot(x, y) / (np.linalg.norm(x) * np.linalg.norm(y)))
+```
+
+使用优先队列来维护距离最近的三个点。
+
+```python
+class priority_queue:
+    def __init__(self, df=None, MAX_VOLUMN=3):
+        self.item = []
+        self.vol = MAX_VOLUMN
+        self.df = df
+
+    def pop(self):
+        return self.item.pop()
+
+    def add(self, x):
+        if len(self.item) < self.vol:
+            self.item.append(x)
+            self.item.sort()
+        elif x[0] < self.item[-1][0]:
+            self.item[-1] = x
+            self.item.sort()
+
+    def show(self):
+        for point in self.item:
+            print(f"第 {point[1]} 个点，余弦距离为 {point[0]}，点的坐标为 "
+                  f"{(float(self.df.iloc[point[1]]['x']), float(self.df.iloc[point[1]]['y']))}")
+```
+
+
+如果使用传统的枚举法，计算复杂度O(n)，当n非常大的时候，计算时间很长。
+```python
+def Enumeration():
+    pri_q = priority_queue(df, 3)
+    start = time.time()
+
+    xs = df['x'].values
+    ys = df['y'].values
+    indices = df.index.values
+
+    points = np.column_stack((xs, ys))
+    target = np.array([target_x, target_y])
+    for i in range(len(indices)):
+        x = points[i]
+        dis = calc_dis(x, target)  
+        pri_q.add([dis, indices[i]])
+
+    pri_q.show()
+
+    end = time.time()
+    print(f"Enumeration用时 {round(end - start, 3)}秒")
+```
+
+所以采用最近邻查找系统(NearestNeibourSearchSystem),手动地将数据点分块，比如，以余弦距离为标准的系统，将二维数据点按照角度分区，在分一个分区中，求出平均点，计算平均点与目标点的距离，得到最近的平均点。在这个平均点的分区中，枚举所有点和目标点的的距离，找到最近点。
+
+```python
+class NearestSystem:
+    def __init__(self, data, target_x, target_y, parts=360):
+        self.data = data
+        self.target_x = target_x
+        self.target_y = target_y
+        self.parts = parts
+        self.points = [[] for _ in range(self.parts)]  
+        self.best_points = []
+
+    def part_points(self):
+        xs = self.data['x'].values
+        ys = self.data['y'].values
+        indices = self.data.index.values
+
+        angles = (np.arctan2(ys, xs) + 2 * np.pi) % (2 * np.pi)
+        sector_indices = (angles / (2 * np.pi / self.parts)).astype(int)
+
+        for i in range(self.parts):
+            mask = (sector_indices == i)
+            sector_points = np.column_stack((xs[mask], ys[mask], indices[mask]))
+            self.points[i] = sector_points.tolist() 
+
+    def avg_vec(self):
+        mn_dis = float('inf')
+        mn_idx = -1
+
+        for i in range(self.parts):
+            sector = self.points[i]
+            if not sector:
+                continue
+            sector_array = np.array(sector)
+            avg_x = np.mean(sector_array[:, 0])
+            avg_y = np.mean(sector_array[:, 1])
+            dis = calc_dis([avg_x, avg_y], [self.target_x, self.target_y])
+            if dis < mn_dis:
+                mn_dis = dis
+                mn_idx = i
+
+        self.best_points = self.points[mn_idx] if mn_idx != -1 else []
+
+    def find_nearest(self):
+        pri_q = priority_queue(self.data)
+        if not self.best_points:
+            pri_q.show()
+            return
+
+        best_points_array = np.array(self.best_points)
+        coords = best_points_array[:, :2]
+        indices = best_points_array[:, 2].astype(int)
+
+        target = np.array([self.target_x, self.target_y])
+
+        dot_products = np.einsum('ij,j->i', coords, target)
+        norms = np.linalg.norm(coords, axis=1) * np.linalg.norm(target)
+        distances = 1 - dot_products / norms
+
+      
+        for dis, idx in zip(distances, indices):
+            pri_q.add([dis, int(idx)])
+        pri_q.show()
+```
+
+
+
+运行两种查找策略
+```python
+def NNSS():
+    start = time.time()
+    nnss = NearestSystem(df, target_x, target_y)
+    nnss.part_points()
+    nnss.avg_vec()
+    nnss.find_nearest()
+    end = time.time()
+    print(f"NNSS用时 {round((end - start), 3)}秒")
+
+def Enumeration():
+    pri_q = priority_queue(df, 3)
+    start = time.time()
+
+    xs = df['x'].values
+    ys = df['y'].values
+    indices = df.index.values
+
+    points = np.column_stack((xs, ys))
+    target = np.array([target_x, target_y])
+    for i in range(len(indices)):
+        x = points[i]
+        dis = calc_dis(x, target)  
+        pri_q.add([dis, indices[i]])
+
+    pri_q.show()
+
+    end = time.time()
+    print(f"Enumeration用时 {round(end - start, 3)}秒")
+
+NNSS()
+Enumeration()
+```
+
+运行结果
+
+```markdown
+第 3507517 个点，余弦距离为 1.5543122344752192e-15，点的坐标为 (9.600203437728684, -4.114372247528461)
+第 3523773 个点，余弦距离为 3.206324095117452e-13，点的坐标为 (2.709546778492818, -1.161231765444164)
+第 2501700 个点，余弦距离为 8.26116952623579e-13，点的坐标为 (3.7898366285952783, -1.624209932014855)
+NNSS用时 7.723 秒
+
+第 3507517 个点，余弦距离为 1.5543122344752192e-15，点的坐标为 (9.600203437728684, -4.114372247528461)
+第 3523773 个点，余弦距离为 3.206324095117452e-13，点的坐标为 (2.709546778492818, -1.161231765444164)
+第 2501700 个点，余弦距离为 8.26116952623579e-13，点的坐标为 (3.7898366285952783, -1.624209932014855)
+Enumeration用时 32.573 秒
+```
+
+发现了提高了76%的运算效率
