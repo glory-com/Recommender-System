@@ -89,9 +89,11 @@ def calc_similarity(x,y) :
 ```
 
 预估目标用户对于物品x的喜爱程度
+
 $$
 \text{like}(\text{user},\text{item}) = \sum_j \text{like}(\text{user}, \text{item}_j) \cdot \text{sim}(\text{item}_j, \text{item})
 $$
+
 返回几百条喜爱程度最大的数据，作为一个召回通道
 
 ### 2.Swing模型
