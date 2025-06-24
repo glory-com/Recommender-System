@@ -70,7 +70,10 @@ $$
 sin(Y,Z) = \frac{0\cdot1+1\cdot0+1\cdot0}{\sqrt{0^2+1^2+1^2}\cdot\sqrt{1^2+0^2+0^2}} = 0 
 $$
 
-简单地，可以得到，计算物品x,y的相似度时，取Item的向量，$\vec{x}$ 和 $\vec{y}$，则
+$$
+\text{简单地，可以得到，计算物品x,y的相似度时，取Item的向量，}\vec{x}\text{和}\vec{y}
+\text{则}
+$$
 
 $$
 \sin(\vec{x}, \vec{y}) = \frac{\vec{x} \cdot \vec{y}}{||\vec{x}||\cdot||\vec{y}||}
@@ -427,3 +430,6 @@ Enumeration用时 32.573 秒
 ```
 
 发现了提高了76%的运算效率
+
+
+### 5.双塔模型
